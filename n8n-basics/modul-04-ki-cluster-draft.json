@@ -1,0 +1,270 @@
+{
+  "name": "n8n Fundamentals Course · Module 04 · AI Cluster and Draft",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Module 04 — AI Cluster · Reading the email, creating a draft\n\nAI is added to the workflow. Instead of a fixed confirmation, n8n creates a personalized reply draft in the user's own mail inbox. The human decides before sending — hybrid pattern in its purest form.\n\n**Important:** The actual AI agent cluster is added in the editor — it is instance-specific (which LLM, which credentials, which memory variant). The skeleton below shows **where** the agent sits.",
+        "height": 200,
+        "width": 1500
+      },
+      "name": "Module overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -240
+      ],
+      "id": "note-overview"
+    },
+    {
+      "parameters": {
+        "content": "### 1. Start workflow manually\n\nSame as in Module 02. Live mode: IMAP trigger.",
+        "height": 180,
+        "width": 200
+      },
+      "name": "Note trigger",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        220,
+        60
+      ],
+      "id": "note-trigger"
+    },
+    {
+      "parameters": {},
+      "name": "Start workflow manually",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        500
+      ],
+      "id": "trigger-manual"
+    },
+    {
+      "parameters": {
+        "content": "### 2. Receive email\n\nFour fields as in Module 02 (**sender**, **subject**, **text**, **received_at**).",
+        "height": 180,
+        "width": 200
+      },
+      "name": "Note email simulation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        440,
+        60
+      ],
+      "id": "note-set-mail"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f-sender",
+              "name": "sender",
+              "value": "max@example.com",
+              "type": "string"
+            },
+            {
+              "id": "f-subject",
+              "name": "subject",
+              "value": "Question about delivery time",
+              "type": "string"
+            },
+            {
+              "id": "f-text",
+              "name": "text",
+              "value": "When is my order number 42-19 arriving?",
+              "type": "string"
+            },
+            {
+              "id": "f-rec",
+              "name": "received_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Receive email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        500
+      ],
+      "id": "set-mail-data"
+    },
+    {
+      "parameters": {
+        "content": "### 3. Assemble prompt\n\nThe **Set node** builds the prompt for the language model from three parts:\n\n- **Style template** (polite, concise, English)\n- **Email content** from step 2\n- **Instruction** (compose a reply suggestion)\n\nThis Set node is the clean separation between data and AI — all inputs are merged here in a controlled way, and the model never sees uncurated email content.",
+        "height": 360,
+        "width": 220
+      },
+      "name": "Note prompt",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        660,
+        60
+      ],
+      "id": "note-prompt"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p-prompt",
+              "name": "prompt",
+              "value": "=You compose short, polite reply drafts in English.\n\nIncoming email from {{ $json.sender }}:\nSubject: {{ $json.subject }}\nText: {{ $json.text }}\n\nCompose a reply suggestion (max. 4 sentences). Return only the plain reply text, no model greeting, no explanation.",
+              "type": "string"
+            },
+            {
+              "id": "p-sender",
+              "name": "sender",
+              "value": "={{ $json.sender }}",
+              "type": "string"
+            },
+            {
+              "id": "p-subject",
+              "name": "subject",
+              "value": "={{ $json.subject }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Assemble prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        700,
+        500
+      ],
+      "id": "set-prompt"
+    },
+    {
+      "parameters": {
+        "content": "### 4. Insert the AI agent cluster here\n\n**Add the node manually:** search for **AI Agent** in the node picker. Attach sub-connections in the editor:\n\n- **Chat Model** → OpenAI / Anthropic / Google / Ollama local\n- **Memory** → optional: Window Buffer\n- **Tools** → none for this module\n\nThe agent's **system prompt** can remain empty — the prompt from step 3 already contains all instructions.\n\n**Output field** of the agent node: **output** — used in the next step for the draft.\n\nWhy not in the template? The cluster requires instance-specific credentials. Better to add in the editor than to fail at import.",
+        "height": 460,
+        "width": 280
+      },
+      "name": "Note AI agent",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        920,
+        60
+      ],
+      "id": "note-agent"
+    },
+    {
+      "parameters": {
+        "content": "### 5. Create draft (instead of sending)\n\nA Gmail node or IMAP draft operation stores the reply suggestion as a **draft** in the user's own inbox — no automatic sending.\n\n**Gmail variant**: Resource *Draft*, Operation *Create*, recipient and body from expressions.\n\n**IMAP variant**: APPEND command on the **Drafts** folder.\n\n**Inbox as approval gate** — the human opens the draft, reviews, edits, sends.",
+        "height": 360,
+        "width": 240
+      },
+      "name": "Note draft",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1220,
+        60
+      ],
+      "id": "note-draft"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d-to",
+              "name": "draftTo",
+              "value": "={{ $('Receive email').item.json.sender }}",
+              "type": "string"
+            },
+            {
+              "id": "d-subject",
+              "name": "draftSubject",
+              "value": "=Re: {{ $('Receive email').item.json.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "d-body",
+              "name": "draftBody",
+              "value": "=PLACEHOLDER: the AI output from the agent node lands here. In the editor, set this field to {{ $('AI Agent').item.json.output }} once the agent is attached.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Shape draft",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1260,
+        500
+      ],
+      "id": "set-draft"
+    },
+    {
+      "parameters": {
+        "content": "### Keep hybrid discipline in mind\n\nAI sits at **only one** spot: composing the reply. Everything before (reading the email, assembling the prompt) and everything after (creating the draft, updating the table) remains deterministic.\n\nThe Production AI Playbook puts it sharply: *\"AI for every step is not only unnecessary but slower and more expensive\"*\n\nAdding AI to steps 1, 2, 5 too builds an unreliable workflow.",
+        "height": 280,
+        "width": 320
+      },
+      "name": "Note hybrid",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        620,
+        800
+      ],
+      "id": "note-hybrid"
+    }
+  ],
+  "connections": {
+    "Start workflow manually": {
+      "main": [
+        [
+          {
+            "node": "Receive email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receive email": {
+      "main": [
+        [
+          {
+            "node": "Assemble prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble prompt": {
+      "main": [
+        [
+          {
+            "node": "Shape draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

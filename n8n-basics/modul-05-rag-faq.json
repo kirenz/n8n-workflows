@@ -1,0 +1,267 @@
+{
+  "name": "n8n Fundamentals Course · Module 05 · RAG with FAQ",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Module 05 — RAG · FAQ as knowledge base in the workflow\n\nThe generic AI draft becomes a substantively grounded draft. A small FAQ table serves as the knowledge base. Before generating the reply, n8n searches the FAQ for matching entries — the hits flow as additional context into the AI prompt.\n\nFour building blocks: **Ingestion → Vector DB → Retrieval → Generation**. Vector processing is attached in the editor — it is instance-specific.",
+        "height": 200,
+        "width": 1500
+      },
+      "name": "Module overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -240
+      ],
+      "id": "note-overview"
+    },
+    {
+      "parameters": {
+        "content": "### 1. Start workflow manually",
+        "height": 140,
+        "width": 200
+      },
+      "name": "Note trigger",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        220,
+        60
+      ],
+      "id": "note-trigger"
+    },
+    {
+      "parameters": {},
+      "name": "Start workflow manually",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        260,
+        500
+      ],
+      "id": "trigger-manual"
+    },
+    {
+      "parameters": {
+        "content": "### 2. Receive email\n\nSame Set node as in the previous modules. Here we deliberately use a **specific** question about delivery time — the FAQ should contain a matching entry.",
+        "height": 220,
+        "width": 220
+      },
+      "name": "Note email simulation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        440,
+        60
+      ],
+      "id": "note-set-mail"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f-sender",
+              "name": "sender",
+              "value": "max@example.com",
+              "type": "string"
+            },
+            {
+              "id": "f-subject",
+              "name": "subject",
+              "value": "How long does delivery take?",
+              "type": "string"
+            },
+            {
+              "id": "f-text",
+              "name": "text",
+              "value": "Hello, I am considering placing an order. How long does delivery take on average?",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Receive email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        500
+      ],
+      "id": "set-mail-data"
+    },
+    {
+      "parameters": {
+        "content": "### 3. Prepare FAQ table\n\n**Before the first run**, create a Data Table in n8n named **faq**. Three columns:\n\n- **question** — example phrasing of the customer question\n- **answer** — the prepared answer text\n- **tags** — keywords (comma-separated)\n\nAt least 10–20 entries. Once the table exists in n8n, a **Vector Store node** can index it and make it searchable.\n\n**Attach in the editor:** Vector Store · Data Table as source · select embedding model (OpenAI, Gemini, Ollama local).",
+        "height": 380,
+        "width": 280
+      },
+      "name": "Note FAQ table",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        700,
+        60
+      ],
+      "id": "note-faq"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f-table",
+              "name": "table",
+              "value": "faq",
+              "type": "string"
+            },
+            {
+              "id": "f-search",
+              "name": "searchQuery",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "f-topk",
+              "name": "topK",
+              "value": "3",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Shape search parameters",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        740,
+        500
+      ],
+      "id": "set-search"
+    },
+    {
+      "parameters": {
+        "content": "### 4. Vector store / retrieval\n\n**Attach in the editor:** **Vector Store** node (n8n Langchain cluster).\n\n- **Operation**: *Retrieve*\n- **Source**: Data Table **faq**\n- **Embedding**: same model as during indexing\n- **Top K**: from the previous Set node (**{{ $json.topK }}**)\n- **Query**: **{{ $json.searchQuery }}**\n\n**Output**: list of FAQ entries with score. Top 3 usually suffices.\n\nThis node is not in the template because the embedding model and vector store type are configured instance-specifically — e.g. pgvector for a sovereign EU variant or Pinecone in the cloud.",
+        "height": 460,
+        "width": 280
+      },
+      "name": "Note retrieval",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        60
+      ],
+      "id": "note-retrieval"
+    },
+    {
+      "parameters": {
+        "content": "### 5. Prompt + RAG context\n\nAfter retrieval, the Set node builds the prompt for generation:\n\n- **Question** from the email\n- **Context** from the top FAQ hits (formatted as a list)\n- **Instruction**: answer only on the basis of the context, otherwise politely defer\n\nThis produces answers grounded in real FAQ entries rather than in invented language knowledge.",
+        "height": 320,
+        "width": 240
+      },
+      "name": "Note prompt RAG",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        60
+      ],
+      "id": "note-prompt-rag"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "rp-prompt",
+              "name": "prompt",
+              "value": "=You answer customer questions exclusively on the basis of the provided FAQ entries.\n\nCustomer question: {{ $('Receive email').item.json.text }}\n\nFAQ hits: PLACEHOLDER — insert {{ $('Vector Store').item.json.results }} here once the Vector Store node is attached.\n\nReply suggestion (max. 4 sentences, polite, source mentioned discreetly):",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Assemble RAG prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1340,
+        500
+      ],
+      "id": "set-rag-prompt"
+    },
+    {
+      "parameters": {
+        "content": "### 6. Generation + create draft\n\n**AI Agent or Chat Model node** (as in Module 04) processes the RAG prompt → personalized, substantiated reply draft → lands as a draft in the inbox.\n\nThe human reviews the draft and, ideally, sees: *\"That's exactly what I wanted to reply — and the delivery time matches the FAQ\"*",
+        "height": 240,
+        "width": 240
+      },
+      "name": "Note generation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1580,
+        60
+      ],
+      "id": "note-generation"
+    },
+    {
+      "parameters": {
+        "content": "### Sovereign variant (EU)\n\nFor those who need to stay GDPR-compliant:\n\n- **Vector DB**: pgvector on your own Postgres instance or with OVHcloud\n- **Embeddings**: open-source models locally (Ollama, BGE, E5) instead of OpenAI/Gemini\n- **LLM**: Claude or OpenAI with EU routing, or a local LLM\n\nThis way the data does not leave the EU. More setup effort, but under your own control.",
+        "height": 260,
+        "width": 320
+      },
+      "name": "Note sovereignty",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        620,
+        800
+      ],
+      "id": "note-sovereign"
+    }
+  ],
+  "connections": {
+    "Start workflow manually": {
+      "main": [
+        [
+          {
+            "node": "Receive email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Receive email": {
+      "main": [
+        [
+          {
+            "node": "Shape search parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape search parameters": {
+      "main": [
+        [
+          {
+            "node": "Assemble RAG prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

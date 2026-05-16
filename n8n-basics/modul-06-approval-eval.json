@@ -1,0 +1,490 @@
+{
+  "name": "n8n Fundamentals Course · Module 06 · Approval and Evals",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Module 06 — Production discipline · Approval and Evals\n\nThe workflow becomes production-ready. Approval step before sending, plus a second scheduled workflow that evaluates daily against a small golden set. Both workflows live in the same template as separate trigger paths.\n\n**Path A** (left): email in → classification → draft → **approval gate** → send\n**Path B** (right): schedule trigger daily → run test set → eval score → on drift, mail to the team",
+        "height": 200,
+        "width": 1820
+      },
+      "name": "Module overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -240
+      ],
+      "id": "note-overview"
+    },
+    {
+      "parameters": {
+        "content": "## Path A — Approval gate before sending",
+        "height": 60,
+        "width": 900
+      },
+      "name": "Banner path A",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        60
+      ],
+      "id": "banner-a"
+    },
+    {
+      "parameters": {
+        "content": "### A1 — Trigger\n\nManual or IMAP trigger as in Module 02.",
+        "height": 140,
+        "width": 200
+      },
+      "name": "Note trigger A",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        160
+      ],
+      "id": "note-trigger-a"
+    },
+    {
+      "parameters": {},
+      "name": "Trigger A",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        40,
+        500
+      ],
+      "id": "trigger-a"
+    },
+    {
+      "parameters": {
+        "content": "### A2 — Generate draft\n\nAs in Module 04: AI reads the email, builds a reply suggestion.\n\nIn this skeleton it is simplified as a Set node with a placeholder — replace it in the editor with the real agent output.",
+        "height": 220,
+        "width": 220
+      },
+      "name": "Note draft A",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        220,
+        160
+      ],
+      "id": "note-draft-a"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-sender",
+              "name": "sender",
+              "value": "max@example.com",
+              "type": "string"
+            },
+            {
+              "id": "a-subject",
+              "name": "subject",
+              "value": "Re: Question about delivery time",
+              "type": "string"
+            },
+            {
+              "id": "a-draft",
+              "name": "draftText",
+              "value": "PLACEHOLDER for AI output from Module 04/05.",
+              "type": "string"
+            },
+            {
+              "id": "a-risk",
+              "name": "riskTag",
+              "value": "low",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Generate draft",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        260,
+        500
+      ],
+      "id": "set-draft-a"
+    },
+    {
+      "parameters": {
+        "content": "### A3 — Approval gate\n\nThe **If node** decides whether approval is needed:\n\n- **riskTag** is **low** → send autonomously\n- **riskTag** is **high** → place in drafts folder, human decides\n\nThis is the core of the hybrid pattern: AI acts where reversible — humans decide where it matters.",
+        "height": 280,
+        "width": 240
+      },
+      "name": "Note approval",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        460,
+        160
+      ],
+      "id": "note-approval"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-risk",
+              "leftValue": "={{ $json.riskTag }}",
+              "rightValue": "low",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Risk low?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        500,
+        500
+      ],
+      "id": "if-approval"
+    },
+    {
+      "parameters": {
+        "content": "### A4 — Send autonomously\n\nLow risk: the workflow sends directly. No human intervention.\n\nUse cases: simple confirmations, standard replies, internal table updates.",
+        "height": 220,
+        "width": 200
+      },
+      "name": "Note send auto",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        700,
+        160
+      ],
+      "id": "note-send-auto"
+    },
+    {
+      "parameters": {
+        "fromEmail": "info@company.com",
+        "toEmail": "={{ $json.sender }}",
+        "subject": "={{ $json.subject }}",
+        "text": "={{ $json.draftText }}",
+        "options": {}
+      },
+      "name": "Send autonomously",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        740,
+        380
+      ],
+      "id": "smtp-auto"
+    },
+    {
+      "parameters": {
+        "content": "### A5 — Place draft in inbox\n\nHigh risk: the workflow places the draft as a **draft** in the inbox and stops. The human sees it there, reviews, sends manually.\n\n**In the editor**: Gmail node with Resource *Draft*, Operation *Create*. Or IMAP APPEND on the Drafts folder.",
+        "height": 280,
+        "width": 220
+      },
+      "name": "Note draft storage",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        700,
+        420
+      ],
+      "id": "note-draft-ablage"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "g-folder",
+              "name": "storageLocation",
+              "value": "Drafts",
+              "type": "string"
+            },
+            {
+              "id": "g-status",
+              "name": "waitingFor",
+              "value": "manual approval",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Place in drafts",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        740,
+        620
+      ],
+      "id": "set-drafts"
+    },
+    {
+      "parameters": {
+        "content": "## Path B — Scheduled eval against golden set",
+        "height": 60,
+        "width": 800
+      },
+      "name": "Banner path B",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        980,
+        60
+      ],
+      "id": "banner-b"
+    },
+    {
+      "parameters": {
+        "content": "### B1 — Schedule trigger\n\nRuns daily or weekly. Sends every test email of the golden set through the main workflow and compares the output with the expected answer.",
+        "height": 240,
+        "width": 220
+      },
+      "name": "Note schedule",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        980,
+        160
+      ],
+      "id": "note-schedule"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 7,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "name": "Schedule (daily 7:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        1020,
+        500
+      ],
+      "id": "trigger-schedule"
+    },
+    {
+      "parameters": {
+        "content": "### B2 — Load golden set\n\n**Data Table** **golden_set** with the columns:\n\n- **question** — test email content\n- **expected_answer** — curated target output\n- **category** — for filtering\n\n10–20 examples are enough to start. In the editor: Data Table node with operation *Get All Rows*.",
+        "height": 280,
+        "width": 240
+      },
+      "name": "Note golden set",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1220,
+        160
+      ],
+      "id": "note-golden"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "gs-table",
+              "name": "table",
+              "value": "golden_set",
+              "type": "string"
+            },
+            {
+              "id": "gs-note",
+              "name": "_note",
+              "value": "In the editor: Data Table → Get All Rows → output replaces this Set node.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Load golden set",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1260,
+        500
+      ],
+      "id": "set-golden"
+    },
+    {
+      "parameters": {
+        "content": "### B3 — LLM-as-a-Judge\n\nFor each test email:\n1. Run through the main workflow (path A)\n2. Compare output with **expected_answer**\n3. Evaluate **comparatively**: *\"Is output A or output B better?\"* → produces more reliable values than absolute scales\n\nIn the editor: a second AI agent node with an evaluation prompt. Can be a cheaper model than the main one.",
+        "height": 320,
+        "width": 240
+      },
+      "name": "Note judge",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        160
+      ],
+      "id": "note-judge"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "j-prompt",
+              "name": "judgePrompt",
+              "value": "=Compare two answers to the same question:\n\nQuestion: {{ $json.question }}\nReference answer: {{ $json.expected_answer }}\nLive answer: PLACEHOLDER (from path A)\n\nReply only with: A_BETTER / B_BETTER / EQUIVALENT",
+              "type": "string"
+            },
+            {
+              "id": "j-note",
+              "name": "_note",
+              "value": "In the editor: attach an AI agent node with this prompt. Output: evaluation per item.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Shape judge prompt",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1520,
+        500
+      ],
+      "id": "set-judge"
+    },
+    {
+      "parameters": {
+        "content": "### B4 — Drift alert\n\nIf the share of EQUIVALENT/A_BETTER evaluations drops below a threshold (e.g. 80 %), the workflow sends a drift mail to the team.\n\nMail contains: date, affected test items, diff to the last eval. This way silent drift becomes visible before it causes damage in production.",
+        "height": 280,
+        "width": 240
+      },
+      "name": "Note drift alert",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1740,
+        160
+      ],
+      "id": "note-drift"
+    },
+    {
+      "parameters": {
+        "fromEmail": "info@company.com",
+        "toEmail": "team@company.com",
+        "subject": "Drift alert: eval rate below 80 %",
+        "text": "=Daily eval against golden set:\n\nRate A_BETTER + EQUIVALENT: PLACEHOLDER\nDate: {{ $now.format('yyyy-MM-dd') }}\n\nPlease check whether a model or prompt update explains the drift.",
+        "options": {}
+      },
+      "name": "Drift mail",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1780,
+        500
+      ],
+      "id": "smtp-drift"
+    }
+  ],
+  "connections": {
+    "Trigger A": {
+      "main": [
+        [
+          {
+            "node": "Generate draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate draft": {
+      "main": [
+        [
+          {
+            "node": "Risk low?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Risk low?": {
+      "main": [
+        [
+          {
+            "node": "Send autonomously",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Place in drafts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule (daily 7:00)": {
+      "main": [
+        [
+          {
+            "node": "Load golden set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load golden set": {
+      "main": [
+        [
+          {
+            "node": "Shape judge prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape judge prompt": {
+      "main": [
+        [
+          {
+            "node": "Drift mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
